@@ -9,6 +9,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+from sklearn.model_selection import GridSearchCV
 from sklearn import metrics
 
 
@@ -45,6 +47,39 @@ def ReadFromFolder(directoryPath):
             validDataset.append(x)
     return testDataset, trainDataset, validDataset
 
+def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs):
+    print('Train Size: {}'.format(trainData.shape))
+    print('Valid Size: {}'.format(validData.shape))
+    print('Test Size: {}'.format(testData.shape))
+    
+    #Decision Tree Classifier training on trainin data
+    decTreeClassifier = DecisionTreeClassifier()
+    decTreeClassifier.fit(trainData,trainLabs)
+    
+    #Parameter tuning
+    paramGrid = {'criterion':['gini','entropy','log_loss'],
+                'splitter':['best','random'],
+                'max_depth': [None, 10, 20, 30],
+                'min_samples_split':[2, 5, 10],
+                'min_samples_leaf':[1, 2, 4]}
+    gridSearchCV = GridSearchCV(decTreeClassifier, paramGrid, cv=5, scoring='accuracy')
+    gridSearchCV.fit(validData,validLabs)
+    bestParams = gridSearchCV.best_params_ #Get the best parameters
+    print('The best parameters are: {}'.format(bestParams)) 
+    
+    #Re-training with the best parameters
+    BestParamDecTreeClassifier = DecisionTreeClassifier(**bestParams)
+    BestParamDecTreeClassifier.fit(np.concatenate([trainData, validData]), np.concatenate([trainLabs, validLabs])) #combine the training and validation data
+
+
+    testPredB = BestParamDecTreeClassifier.predict(testData) #Run the test
+
+    #Print out the accuracy and the F-1 Score
+    print('Accuracy of Test: {}'.format(metrics.accuracy_score(testLabs, testPredB)))
+    print('F1 Score of Test: {}'.format(metrics.f1_score(testLabs, testPredB)))
+    print('-----------')
+
+    #Combine the valid and the training data
 
 
 def main() -> None:
@@ -54,24 +89,16 @@ def main() -> None:
     #print(testSet[1])
 
     #Create labels
-    for training,testing in zip(trainSet, testSet) :
+    for training,testing,validating in zip(trainSet, testSet,validSet) :
         trainLabel = training.iloc[:, -1].values.reshape(-1,1)
         trainData = training.iloc[:,:-1]
         testLabel = testing.iloc[:,-1].values.reshape(-1,1)
         testData = testing.iloc[:,:-1]
+        validLabel = validating.iloc[:, -1].values.reshape(-1,1)
+        validData = validating.iloc[:, :-1]
 
-        
-        print('Train Size: {}'.format(trainData.shape))
-        print('Test Size: {}'.format(testData.shape))
-        
-
-        decTreeClassifier = DecisionTreeClassifier()
-        decTreeClassifier.fit(trainData,trainLabel)
-
-        testPred = decTreeClassifier.predict(testData)
-        print('Prediction shape: {}'.format(testPred.shape))
-        print("Accuracy:", metrics.accuracy_score(testLabel, testPred))
-        print('-----------')
+        #Decision Tree Classifier
+        DecisionTrees(trainData, trainLabel, testData, testLabel,validData, validLabel)
     
     # trainingData = pd.read_csv("all_data/train_c300_d100.csv", header=None)
     # testData = pd.read_csv("all_data/test_c300_d100.csv", header=None)
