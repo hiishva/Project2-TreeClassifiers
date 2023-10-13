@@ -12,17 +12,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn import metrics
 
 
-
-
-
-'''
-generate datasets
-create model
-tune model
-test model
-driver function
-
-'''
 def ReadFromFolder(directoryPath):
     #print('Inside readfromfolder')
     testDataset = [] # All the data values for tests
@@ -30,27 +19,24 @@ def ReadFromFolder(directoryPath):
     validDataset = [] # all the data values for validation
 
     for fileName in sorted(glob.glob(directoryPath+'*.csv')):
-        #print('inside the for loop of the glob')
         if 'test' in fileName:
             x = pd.read_csv(fileName,low_memory=False,header=None)
-            #print("{} appended to test".format(fileName))
             testDataset.append(x)
         elif 'train' in fileName:
             x = pd.read_csv(fileName,low_memory=False,header=None)
-            #print('{} appended to train'.format(fileName))
             trainDataset.append(x)
         elif 'valid' in fileName:
             x = pd.read_csv(fileName, low_memory=False,header=None)
-            #print('{} append to valid'.format(fileName))
             validDataset.append(x)
     return testDataset, trainDataset, validDataset
 
+## DECISION TREE CLASSIFIER ##
 def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs):
     print('Train Size: {}'.format(trainData.shape))
     print('Valid Size: {}'.format(validData.shape))
     print('Test Size: {}'.format(testData.shape))
     
-    #Decision Tree Classifier training on trainin data
+    #Decision Tree Classifier training on training data
     decTreeClassifier = DecisionTreeClassifier()
     decTreeClassifier.fit(trainData,trainLabs)
     
@@ -65,7 +51,7 @@ def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs)
     bestParams = gridSearchCV.best_params_ #Get the best parameters
     print('The best parameters are: {}'.format(bestParams)) 
     
-    #Re-training with the best parameters
+    #Re-training with the best parameters on the combination training and validation data
     BestParamDecTreeClassifier = DecisionTreeClassifier(**bestParams)
     BestParamDecTreeClassifier.fit(np.concatenate([trainData, validData]), np.concatenate([trainLabs, validLabs])) #combine the training and validation data
 
@@ -79,6 +65,7 @@ def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs)
 
     return
 
+## BAGGING CLASSIFIER WITH BASE ESTIMATOR OF DECISIONTREE CLASSIFIER ##
 def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, validLabel):
     print('Train Size: {}'.format(trainData.shape))
     print('Valid Size: {}'.format(validData.shape))
@@ -95,12 +82,11 @@ def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, vali
     
     # Parameter tuning
     paramGridBag = {
-            'n_estimators': [10,100,1000],
-            'max_samples' :[1, 2, 5],
-            'max_features':[1, 10, 100],
-            'bootstrap': [True, False],
-            'bootstrap_features': [True, False]
-    }
+                'n_estimators': [10,100,1000],
+                'max_samples' :[1, 2, 5],
+                'max_features':[1, 10, 100],
+                'bootstrap': [True, False],
+                'bootstrap_features': [True, False]}
 
     gridSearchBag = GridSearchCV(bagClass, paramGridBag, cv=5, scoring='accuracy')
     gridSearchBag.fit(validData,validLabel)
@@ -108,7 +94,7 @@ def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, vali
     print('The best parameters: {}'.format(baggingBestParams))
     bestBagging = BaggingClassifier(**baggingBestParams)
 
-    # Re-training with the best parameters
+    # Re-training with the best parameters on combined training and validation data 
     bestBagging.fit(np.concatenate([trainData, validData]), np.concatenate([trainLabel, validLabel])) #combine the training and validation data
     testPredB = bestBagging.predict(testData) #Run the test
 
@@ -116,6 +102,52 @@ def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, vali
     print('Accuracy of Test: {}'.format(metrics.accuracy_score(testLabel, testPredB)))
     print('F1 Score of Test: {}'.format(metrics.f1_score(testLabel, testPredB)))
     print('-----------')
+
+
+def RandomForest(trainData, trainLabel, testData, testLabel, validData, validLabel):
+    print('Training Size: {}'.format(trainData.shape))
+    print('Test Size: {}'.format(testData.shape))
+    print('Valid Size: {}'.format(validData.shape))
+
+    #Create Random Forest and train on training data
+    rfClassifier = RandomForestClassifier() #Base estimator is the decisionTree classifier by default
+    rfClassifier.fit(trainData,trainLabel)
+    #testPred = rfClassifier.predict(testData)
+    #print('Test pred size {}'.format(testPred.shape))
+    #print('Accuracy b4 tuning: {}'.format(metrics.accuracy_score(testLabel, testPred)))
+
+    # Parameter tuning
+    paramGrid = {
+                'criterion':['gini','entropy','log_loss'],
+                'n_estimators': [100,250,500],
+                'max_features':['sqrt','log2'],
+                'max_depth': [10,100, None],
+                'min_samples_split':[2,5,10],
+                'min_samples_leaf':[1,2,4]}
+    
+    rfGridSearch = GridSearchCV(rfClassifier, paramGrid, cv = 2,scoring='accuracy', verbose=2)
+    rfGridSearch.fit(validData,validLabel)
+    rfBestParams = rfGridSearch.best_params_
+    print('The best parameters: {}'.format(rfBestParams))
+    bestRF = RandomForestClassifier(**rfBestParams)
+
+    # Re-train data with the best parameters on combined training and validation data 
+    bestRF.fit(np.concatenate([trainData,validData]), np.concatenate([trainLabel, validLabel]))
+    testPredB = bestRF.predict(testData)
+
+    #Print out accuracy and the score
+    print('Accuracy of Test: {}'.format(metrics.accuracy_score(testLabel, testPredB)))
+    print('F-1 Score of Test: {}'.format(metrics.f1_score(testLabel,testPredB)))
+    print('-----------')
+    return
+
+
+## GRADIENT BOOSTING ##
+def GradientBoosting(trainData, trainLabel, testData, testLabel, validData, validLabel):
+    print('Training Size: {}'.format(trainData.shape))
+    print('Test Size: {}'.format(testData.shape))
+    print('Valid Size: {}'.format(validData.shape))
+    return
 
 def main() -> None:
     directoryName = sys.argv[1]
@@ -136,34 +168,10 @@ def main() -> None:
         #DecisionTrees(trainData, trainLabel, testData, testLabel,validData, validLabel)
 
         #Bagging Classifier
-        BaggingClassifiers(trainData, trainLabel, testData, testLabel, validData, validLabel)
-    
-    # trainingData = pd.read_csv("all_data/train_c300_d100.csv", header=None)
-    # testData = pd.read_csv("all_data/test_c300_d100.csv", header=None)
-    # #print(data.head())
+        #BaggingClassifiers(trainData, trainLabel, testData, testLabel, validData, validLabel)
 
-    # train_labels = trainingData.iloc[:, -1].values.reshape(-1, 1)
-    # train_data = trainingData.iloc[:, :-1]
-
-    # test_labels = testData.iloc[:, -1].values.reshape(-1, 1)
-    # test_data = testData.iloc[:, :-1]
-    # print('Train size')
-    # print(train_data.shape)
-    # print(train_labels.shape)
-    # print('Test size')
-    # print(test_data.shape)
-    # print(test_labels.shape)
-
-    # classifier = DecisionTreeClassifier(criterion='log_loss', max_depth=10)
-    # classifier.fit(train_data, train_labels)
-
-    
-
-    # test_pred = classifier.predict(test_data)
-    # print(test_pred.shape)
-
-    # print("Accuracy:", metrics.accuracy_score(test_labels, test_pred))
-
+        #Random Forest
+        RandomForest(trainData, trainLabel, testData, testLabel, validData, validLabel)
     pass
 
 
