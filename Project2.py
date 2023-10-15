@@ -19,24 +19,21 @@ def ReadFromFolder(directoryPath):
     for fileName in sorted(glob.glob(directoryPath+'*.csv')):
         if 'test' in fileName:
             x = pd.read_csv(fileName,low_memory=False,header=None)
-            print('test file Name: {}'.format(fileName))
+            #print('test file Name: {}'.format(fileName))
             testDataset.append(x)
         elif 'train' in fileName:
             x = pd.read_csv(fileName,low_memory=False,header=None)
-            print('train file Name: {}'.format(fileName))
+            #print('train file Name: {}'.format(fileName))
             trainDataset.append(x)
         elif 'valid' in fileName:
             x = pd.read_csv(fileName, low_memory=False,header=None)
-            print('valid file Name: {}'.format(fileName))
+            #print('valid file Name: {}'.format(fileName))
             validDataset.append(x)
     return testDataset, trainDataset, validDataset
 
 ## DECISION TREE CLASSIFIER ##
 def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs):
-    # print('Train Size: {}'.format(trainData.shape))
-    # print('Valid Size: {}'.format(validData.shape))
-    # print('Test Size: {}'.format(testData.shape))
-    
+
     # Decision Tree Classifier training on training data
     decTreeClassifier = DecisionTreeClassifier()
     decTreeClassifier.fit(trainData,trainLabs)
@@ -67,11 +64,7 @@ def DecisionTrees(trainData, trainLabs, testData, testLabs,validData, validLabs)
 
 ## BAGGING CLASSIFIER WITH BASE ESTIMATOR OF DECISIONTREE CLASSIFIER ##
 def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, validLabel):
-    # print('Train Size: {}'.format(trainData.shape))
-    # print('Valid Size: {}'.format(validData.shape))
-    # print('Test Size: {}'.format(testData.shape))
 
-    
     # Create and the train the bagging classifier
     bagClass = BaggingClassifier() #Default base estimator is DecisionTreeClassfier
     bagClass.fit(trainData,trainLabel)
@@ -101,9 +94,6 @@ def BaggingClassifiers(trainData,trainLabel,testData, testLabel, validData, vali
 
 ## RANDOM FOREST ##
 def RandomForest(trainData, trainLabel, testData, testLabel, validData, validLabel):
-    # print('Training Size: {}'.format(trainData.shape))
-    # print('Test Size: {}'.format(testData.shape))
-    # print('Valid Size: {}'.format(validData.shape))
 
     #Create Random Forest and train on training data
     rfClassifier = RandomForestClassifier() #Base estimator is the decisionTree classifier by default
@@ -137,9 +127,6 @@ def RandomForest(trainData, trainLabel, testData, testLabel, validData, validLab
 
 ## GRADIENT BOOSTING ##
 def GradientBoosting(trainData, trainLabel, testData, testLabel, validData, validLabel):
-    # print('Training Size: {}'.format(trainData.shape))
-    # print('Test Size: {}'.format(testData.shape))
-    # print('Valid Size: {}'.format(validData.shape))
 
     #Create the Gradient boosting classifier and train on training
     gbClassifier = GradientBoostingClassifier()
@@ -175,7 +162,7 @@ def main() -> None:
     print('directory name: {}'.format(directoryName))
     testSet, trainSet, validSet = ReadFromFolder(directoryName)
 
-    #Create labels
+    #get separate the data accordingly
     for training,testing,validating in zip(trainSet, testSet,validSet) :
         trainLabel = training.iloc[:, -1].values.reshape(-1,)
         trainData = training.iloc[:,:-1]
@@ -185,20 +172,20 @@ def main() -> None:
         validData = validating.iloc[:, :-1]
 
         #Decision Tree Classifier
-        # print('Decision Tree Classifier for size {}:'.format(trainData.shape))
-        # DecisionTrees(trainData, trainLabel, testData, testLabel,validData, validLabel)
+        print('Decision Tree Classifier for size {}:'.format(trainData.shape))
+        DecisionTrees(trainData, trainLabel, testData, testLabel,validData, validLabel)
 
         # #Bagging Classifier
-        # print('Bagging Classifier for {}:'.format(trainData.shape))
-        # BaggingClassifiers(trainData, trainLabel, testData, testLabel, validData, validLabel)
+        print('Bagging Classifier for {}:'.format(trainData.shape))
+        BaggingClassifiers(trainData, trainLabel, testData, testLabel, validData, validLabel)
 
         #Random Forest
         print('Random Forest Classifier for {}, {}, {}:'.format(trainData.shape, validData.shape, testData.shape))
         RandomForest(trainData, trainLabel, testData, testLabel, validData, validLabel)
 
         #Gradient Boosting
-        #print('Gradient Boosting Classifier for {}, {}, {}:'.format(trainData.shape, validData.shape, testData.shape))
-        #GradientBoosting(trainData, trainLabel,testData, testLabel, validData, validLabel)
+        print('Gradient Boosting Classifier for {}, {}, {}:'.format(trainData.shape, validData.shape, testData.shape))
+        GradientBoosting(trainData, trainLabel,testData, testLabel, validData, validLabel)
     pass
 
 
